@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Vault Sign In</title>
+
+<style>
+body {
+    margin: 0;
+    background: #1e1f22;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+}
+
+.container {
+    background: #2b2d31;
+    padding: 30px;
+    border-radius: 10px;
+    text-align: center;
+    width: 280px;
+}
+
+input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 6px;
+    border: none;
+    outline: none;
+    background: #1e1f22;
+    color: #fff;
+}
+
+button {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 6px;
+    background: #5865f2;
+    color: #fff;
+    cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <h2>Sign In</h2>
+    <input id="username" placeholder="Enter username">
+    <button onclick="signIn()">Continue</button>
+    <button style="margin-top:10px; background:#444;" onclick="guestLogin()">Continue as Guest</button>
+</div>
+
+<script>
+function guestLogin() {
+    localStorage.setItem("vaultUsername", "Guest");
+    window.location.href = "index.html";
+}
+</script>
+
+
+<script>
+// 🔁 Auto redirect if already signed in
+window.onload = () => {
+    const savedUser = localStorage.getItem("vaultUsername");
+    if (savedUser) {
+        window.location.href = "index.html";
+    }
+};
+
+function signIn() {
+    const username = document.getElementById("username").value.trim();
+
+    if (!username) {
+        alert("Enter username");
+        return;
+    }
+
+    fetch("/signin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username })
+    })
+    .then(res => res.text())
+    .then(data => {
+        if (data === "OK") {
+            // ✅ Save login for this browser
+            localStorage.setItem("vaultUsername", username);
+
+            // ✅ Redirect to chat
+            window.location.href = "index.html";
+        } else {
+            alert(data);
+        }
+    })
+    .catch(err => alert("Error: " + err));
+}
+</script>
+
+</body>
+</html>

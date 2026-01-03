@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Create Server</title>
+<style>
+body {
+    margin: 0;
+    background: #1e1f22;
+    font-family: Arial, sans-serif;
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #2b2d31;
+    padding: 30px;
+    border-radius: 12px;
+    gap: 20px;
+    width: 400px;
+}
+
+button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    background: #5865f2;
+    color: #fff;
+    font-size: 16px;
+}
+
+button:hover {
+    background: #4752c4;
+}
+
+input[type="text"], input[type="password"] {
+    padding: 8px;
+    border-radius: 6px;
+    border: none;
+    outline: none;
+    width: 100%;
+    margin-top: 5px;
+    margin-bottom: 10px;
+}
+
+.hidden { display: none; }
+
+.username-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 100%;
+}
+
+.username-item {
+    display: flex;
+    gap: 5px;
+}
+
+.username-item input { flex: 1; }
+</style>
+</head>
+<body>
+
+<div class="container" id="container">
+    <h2>Create Server</h2>
+
+    <!-- Step 1: Choose Type -->
+    <div id="step1">
+        <p>Choose server type:</p>
+        <button onclick="selectType('public')">Public</button>
+        <button onclick="selectType('private')">Private</button>
+    </div>
+
+    <!-- Public Step -->
+    <div id="publicStep" class="hidden">
+        <p>Enter server name:</p>
+        <input type="text" id="publicName" placeholder="Server name">
+        <button onclick="createPublicServer()">Create Public Server</button>
+        <p id="publicKey"></p>
+    </div>
+
+    <!-- Private Step -->
+    <div id="privateStep" class="hidden">
+        <p>Private Server Option:</p>
+        <button onclick="choosePrivateOption('password')">Use Password</button>
+        <button onclick="choosePrivateOption('usernames')">Add Usernames</button>
+    </div>
+
+    <!-- Private Password -->
+    <div id="passwordStep" class="hidden">
+        <p>Set server password:</p>
+        <input type="password" id="privatePassword" placeholder="Password">
+        <button onclick="continuePrivate()">Continue</button>
+    </div>
+
+    <!-- Private Usernames -->
+    <div id="usernamesStep" class="hidden">
+        <p>Add allowed usernames:</p>
+        <div class="username-list" id="usernameList"></div>
+        <button onclick="addUsernameInput()">Add Username</button>
+        <button onclick="continuePrivate()">Continue</button>
+    </div>
+
+    <!-- Final Step for Private -->
+    <div id="finalStep" class="hidden">
+        <p>Enter server name:</p>
+        <input type="text" id="privateServerName" placeholder="Server name">
+        <button onclick="createPrivateServer()">Create Server</button>
+    </div>
+</div>
+
+<script>
+let serverType = '';
+let privateOption = '';
+let usernames = [];
+
+// Step 1: Choose type
+function selectType(type) {
+    serverType = type;
+    document.getElementById('step1').classList.add('hidden');
+
+    if(type === 'public') {
+        document.getElementById('publicStep').classList.remove('hidden');
+    } else {
+        document.getElementById('privateStep').classList.remove('hidden');
+    }
+}
+
+// Create public server
+async function createPublicServer() {
+    const name = document.getElementById('publicName').value.trim();
+    if(!name) return alert("Enter server name!");
+
+    const res = await fetch('/createserver', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'public', name })
+    });
+    const data = await res.json();
+    if(data.success){
+        document.getElementById('publicKey').innerText = "Server Key: " + data.key;
+        setTimeout(()=> window.location.href='account.html', 2000);
+    } else {
+        alert("Failed to create server");
+    }
+}
+
+// Private options
+function choosePrivateOption(option){
+    privateOption = option;
+    document.getElementById('privateStep').classList.add('hidden');
+    if(option === 'password') {
+        document.getElementById('passwordStep').classList.remove('hidden');
+    } else {
+        document.getElementById('usernamesStep').classList.remove('hidden');
+        addUsernameInput();
+    }
+}
+
+// Add username input
+function addUsernameInput(){
+    const list = document.getElementById('usernameList');
+    const div = document.createElement('div');
+    div.className = 'username-item';
+    div.innerHTML = `<input type="text" placeholder="Username"><button onclick="removeUsername(this)">X</button>`;
+    list.appendChild(div);
+}
+
+function removeUsername(btn){
+    btn.parentElement.remove();
+}
+
+// Continue private to server name
+function continuePrivate(){
+    usernames = [];
+    if(privateOption === 'usernames') {
+        const inputs = document.querySelectorAll('#usernameList input');
+        for(let inp of inputs){
+            if(inp.value.trim()) usernames.push(inp.value.trim());
+        }
+        if(usernames.length === 0) return alert("Add at least one username!");
+    } else if(privateOption === 'password') {
+        const pass = document.getElementById('privatePassword').value.trim();
+        if(!pass) return alert("Enter a password!");
+        usernames.push(pass);
+    }
+
+    document.getElementById('passwordStep').classList.add('hidden');
+    document.getElementById('usernamesStep').classList.add('hidden');
+    document.getElementById('finalStep').classList.remove('hidden');
+}
+
+// Create private server
+async function createPrivateServer(){
+    const name = document.getElementById('privateServerName').value.trim();
+    if(!name) return alert("Enter server name!");
+
+    let payload = { type: 'private', name };
+    if(privateOption === 'password') payload.password = usernames[0];
+    else payload.allowedUsers = usernames;
+
+    const res = await fetch('/createserver', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if(data.success){
+        alert("Server created!");
+        window.location.href='account.html';
+    } else {
+        alert("Failed to create server");
+    }
+}
+</script>
+
+</body>
+</html>

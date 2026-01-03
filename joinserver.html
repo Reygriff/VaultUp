@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Join Server</title>
+
+<style>
+body {
+    margin: 0;
+    background: #1e1f22;
+    font-family: Arial, sans-serif;
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.container {
+    background: #2b2d31;
+    padding: 30px;
+    border-radius: 12px;
+    width: 400px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+button {
+    padding: 10px;
+    border: none;
+    border-radius: 6px;
+    background: #5865f2;
+    color: #fff;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #4752c4;
+}
+
+input {
+    padding: 10px;
+    border-radius: 6px;
+    border: none;
+    outline: none;
+    width: 100%;
+}
+
+.hidden { display: none; }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <h2>Join Server</h2>
+
+    <!-- STEP 1 -->
+    <div id="stepName">
+        <p>Enter server name:</p>
+        <input id="serverName" placeholder="Server name">
+        <button onclick="goType()">Continue</button>
+    </div>
+
+    <!-- STEP 2 -->
+    <div id="stepType" class="hidden">
+        <p>Select server type:</p>
+        <button onclick="selectType('public')">Public</button>
+        <button onclick="selectType('private')">Private</button>
+    </div>
+
+    <!-- PUBLIC -->
+    <div id="publicStep" class="hidden">
+        <p>Enter server key:</p>
+        <input id="publicKey" placeholder="Server key">
+        <button onclick="joinPublic()">Join Server</button>
+    </div>
+
+    <!-- PRIVATE -->
+    <div id="privateStep" class="hidden">
+        <p>Join private server using:</p>
+        <button onclick="selectPrivate('password')">Password</button>
+        <button onclick="selectPrivate('username')">Username</button>
+    </div>
+
+    <!-- PASSWORD -->
+    <div id="passwordStep" class="hidden">
+        <input id="privatePassword" type="password" placeholder="Password">
+        <button onclick="joinPrivate()">Join Server</button>
+    </div>
+
+    <!-- USERNAME -->
+    <div id="usernameStep" class="hidden">
+        <input id="privateUsername" placeholder="Username">
+        <button onclick="joinPrivate()">Join Server</button>
+    </div>
+</div>
+
+<script>
+let serverName = "";
+let serverType = "";
+let privateMode = "";
+
+function goType() {
+    serverName = document.getElementById("serverName").value.trim();
+    if (!serverName) return alert("Enter server name");
+
+    document.getElementById("stepName").classList.add("hidden");
+    document.getElementById("stepType").classList.remove("hidden");
+}
+
+function selectType(type) {
+    serverType = type;
+    document.getElementById("stepType").classList.add("hidden");
+
+    if (type === "public") {
+        document.getElementById("publicStep").classList.remove("hidden");
+    } else {
+        document.getElementById("privateStep").classList.remove("hidden");
+    }
+}
+
+function selectPrivate(mode) {
+    privateMode = mode;
+    document.getElementById("privateStep").classList.add("hidden");
+
+    if (mode === "password") {
+        document.getElementById("passwordStep").classList.remove("hidden");
+    } else {
+        document.getElementById("usernameStep").classList.remove("hidden");
+    }
+}
+
+/* JOIN PUBLIC */
+async function joinPublic() {
+    const key = document.getElementById("publicKey").value.trim();
+    if (!key) return alert("Enter server key");
+
+    joinServer({ serverName, publicKey: key });
+}
+
+/* JOIN PRIVATE */
+async function joinPrivate() {
+    let payload = { serverName };
+
+    if (privateMode === "password") {
+        const password = document.getElementById("privatePassword").value.trim();
+        if (!password) return alert("Enter password");
+        payload.password = password;
+    } else {
+        const username = document.getElementById("privateUsername").value.trim();
+        if (!username) return alert("Enter username");
+        payload.username = username;
+    }
+
+    joinServer(payload);
+}
+
+/* CORE JOIN */
+async function joinServer(data) {
+    try {
+        const res = await fetch("/joinserver", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+
+        if (!result.success) {
+            alert(result.msg || "Server does not exist");
+            return;
+        }
+
+        alert("Joined server successfully!");
+        window.location.href = "index.html";
+
+    } catch (e) {
+        alert("Server error");
+    }
+}
+</script>
+
+</body>
+</html>

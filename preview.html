@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Vault Preview</title>
+<style>
+body{
+  margin:0;
+  background:#111;
+  color:white;
+  font-family:Arial;
+  padding:20px;
+  text-align:center;
+}
+.plus{
+  width:120px;
+  height:120px;
+  border-radius:50%;
+  font-size:60px;
+  background:#5865f2;
+  color:white;
+  border:none;
+  cursor:pointer;
+  margin:30px auto;
+}
+.viewer{
+  width:90%;
+  max-width:800px;
+  margin:20px auto;
+  background:#fff;
+  border-radius:10px;
+  overflow:hidden;
+}
+iframe{
+  width:100%;
+  height:300px;
+  border:none;
+}
+pre{
+  background:#1e1f22;
+  color:white;
+  padding:15px;
+  text-align:left;
+  white-space:pre-wrap;
+  overflow:auto;
+  border-radius:10px;
+}
+.toggle{
+  margin-top:10px;
+}
+.toggle button{
+  padding:6px 12px;
+  margin:4px;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+}
+.active{
+  background:#5865f2;
+  color:white;
+}
+</style>
+</head>
+<body>
+<h2>Vault File Preview</h2>
+<button class="plus" onclick="fileInput.click()">+</button>
+<input type="file" id="fileInput" hidden accept=".html,.css,.js,image/*,video/*,audio/*">
+
+<div class="toggle" id="toggle" style="display:none">
+  <button id="runBtn" class="active">Run</button>
+  <button id="codeBtn">Code</button>
+</div>
+
+<div id="output"></div>
+
+<script>
+const fileInput = document.getElementById("fileInput");
+const output = document.getElementById("output");
+const toggle = document.getElementById("toggle");
+const runBtn = document.getElementById("runBtn");
+const codeBtn = document.getElementById("codeBtn");
+
+let fileText = "";
+let isHTML = false;
+
+fileInput.onchange = () => {
+  const file = fileInput.files[0];
+  if(!file) return;
+
+  output.innerHTML = "";
+  toggle.style.display = "none";
+  isHTML = file.name.endsWith(".html");
+
+  const reader = new FileReader();
+
+  if(isHTML || file.name.endsWith(".css") || file.name.endsWith(".js")){
+    reader.onload = () => {
+      fileText = reader.result;
+      if(isHTML){
+        showRun();
+        toggle.style.display = "block";
+      }else{
+        showCode();
+      }
+    };
+    reader.readAsText(file);
+  }
+  else if(file.type.startsWith("image/")){
+    reader.onload = () => {
+      const img = document.createElement("img");
+      img.src = reader.result;
+      img.style.width = "100%";
+      output.appendChild(img);
+    };
+    reader.readAsDataURL(file);
+  }
+  else if(file.type.startsWith("video/")){
+    reader.onload = () => {
+      const v = document.createElement("video");
+      v.src = reader.result;
+      v.controls = true;
+      v.style.width = "100%";
+      output.appendChild(v);
+    };
+    reader.readAsDataURL(file);
+  }
+  else if(file.type.startsWith("audio/")){
+    reader.onload = () => {
+      const a = document.createElement("audio");
+      a.src = reader.result;
+      a.controls = true;
+      output.appendChild(a);
+    };
+    reader.readAsDataURL(file);
+  }
+};
+
+runBtn.onclick = showRun;
+codeBtn.onclick = showCode;
+
+function showRun(){
+  runBtn.classList.add("active");
+  codeBtn.classList.remove("active");
+  output.innerHTML = "";
+
+  const box = document.createElement("div");
+  box.className = "viewer";
+
+  const iframe = document.createElement("iframe");
+  iframe.srcdoc = fileText;
+  box.appendChild(iframe);
+
+  output.appendChild(box);
+}
+
+function showCode(){
+  codeBtn.classList.add("active");
+  runBtn.classList.remove("active");
+  output.innerHTML = "";
+
+  const pre = document.createElement("pre");
+  pre.textContent = fileText;
+  output.appendChild(pre);
+}
+</script>
+</body>
+</html>

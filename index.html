@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Vault Chat</title>
+<style>
+body{
+    margin:0;
+    background:#1e1f22;
+    font-family:Arial,sans-serif;
+    color:#fff;
+    height:100vh;
+    overflow:hidden;
+}
+.app{display:flex;height:100%;}
+
+/* ================= SERVER BAR ================= */
+.servers{
+    width:70px;
+    background:#111214;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding-top:15px;
+    position:relative;
+}
+.server-icon{
+    width:48px;
+    height:48px;
+    border-radius:50%;
+    background:#2b2d31;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin-bottom:10px;
+}
+.server-icon img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+}
+/* ===== USER PANEL ===== */
+.user-panel{
+    position:absolute;
+    bottom:10px;
+    left:6px;
+    height:44px;
+    background:#0f1013;
+    border-radius:12px;
+    display:flex;
+    align-items:center;
+    padding:6px 10px;
+    gap:8px;
+    width:fit-content;
+    max-width:240px;
+    cursor:pointer;
+}
+.user-panel img{
+    width:32px;
+    height:32px;
+    border-radius:50%;
+    object-fit:cover;
+    flex-shrink:0;
+}
+.user-panel span{ font-size:14px; white-space:nowrap; }
+/* ================= SIDEBAR ================= */
+.sidebar{
+    width:220px;
+    background:#2b2d31;
+    padding:12px;
+    box-sizing:border-box;
+}
+.sidebar h4{
+    margin:0 0 10px 0;
+    font-size:14px;
+    color:#b5bac1;
+}
+.item{margin-top:10px;color:#dbdee1;font-size:14px;cursor:pointer;}
+.item.small{font-size:13px;color:#b5bac1;}
+.channel-list{margin-top:10px;}
+.divider{height:1px;background:#3f4147;margin:10px 0;}
+/* ================= CHAT ================= */
+.chat-area{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    background:#313338;
+}
+.chat-header{
+    padding:12px;
+    border-bottom:1px solid #3f4147;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+.chat-header-left{display:flex;align-items:center;gap:10px;}
+.chat-header-left img{width:32px;height:32px;border-radius:50%;}
+.chat-header-left span{font-weight:bold;}
+.delete-btn{padding:4px 8px;border:none;border-radius:4px;cursor:pointer;color:#fff;}
+.logout{background:#f04747;}
+.delete-channel{background:#5865f2;}
+.messages{
+    flex:1;
+    padding:15px;
+    display:flex;
+    flex-direction:column;
+    overflow-y:auto;
+}
+.message{
+    max-width:60%;
+    padding:8px 12px;
+    margin-bottom:10px;
+    border-radius:8px;
+    font-size:14px;
+    word-break:break-word;
+}
+.left{background:#383a40;align-self:flex-start;}
+.right{background:#5865f2;align-self:flex-end;}
+.input-area{
+    padding:10px;
+    border-top:1px solid #3f4147;
+    display:flex;
+    gap:8px;
+}
+.input-area input{
+    flex:1;
+    padding:10px;
+    border-radius:6px;
+    border:none;
+    outline:none;
+    background:#1e1f22;
+    color:#fff;
+}
+.icon-btn{
+    background:#5865f2;
+    border:none;
+    padding:8px 12px;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:16px;
+}
+canvas{
+    background:#1e1f22;
+    border-radius:4px;
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+<!-- SERVER BAR -->
+<div class="servers">
+    <div class="server-icon">
+        <img src="vaulthomeicon.png">
+    </div>
+    <div class="server-icon" style="margin-bottom:15px; cursor:pointer;" onclick="openJoinServer()">
+        <span style="font-size:36px;color:#fff;display:flex;align-items:center;justify-content:center;height:100%;width:100%;">+</span>
+    </div>
+    <div class="user-panel" id="userPanel">
+        <img src="vaulthomeicon.png" id="userImage">
+        <span id="usernameDisplay"></span>
+    </div>
+</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+    <h4>Channels</h4>
+    <div class="item small">
+        <button onclick="location.href='createchannel.html'" style="background:none;border:none;color:#dbdee1;cursor:pointer;">Create Channel +</button>
+    </div>
+
+    <!-- separator line -->
+    <div class="divider"></div>
+
+    <!-- CREATED CHANNELS -->
+    <h4>Created</h4>
+    <div class="channel-list" id="createdChannels"></div>
+
+    <div class="divider"></div>
+
+    <!-- LIVE CHANNELS -->
+    <h4>Live Channels</h4>
+    <div class="channel-list" id="liveChannels"></div>
+</div>
+
+
+<!-- CHAT -->
+<div class="chat-area">
+    <div class="chat-header">
+        <div class="chat-header-left">
+            <span id="currentChannelDisplay">No channel joined</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+            <button class="delete-btn logout" id="logoutBtn">Logout</button>
+            <button class="delete-btn delete-channel" id="deleteChannelBtn" style="display:none;">Delete Channel</button>
+        </div>
+    </div>
+    <div class="messages" id="chat"></div>
+    <div class="input-area" id="inputArea">
+        <input id="msg" placeholder="Message Vault..." onkeydown="handleKey(event)">
+    </div>
+</div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+let username = localStorage.getItem("vaultUsername") || "Guest";
+document.getElementById("usernameDisplay").innerText = username;
+let currentChannel = null;
+let currentChannelCreator = null;
+let currentChannelType = "text"; 
+let typingTimeout = null;
+let typingElements = {};
+const chat = document.getElementById("chat");
+let input = document.getElementById("msg");
+const createChannelsDiv = document.getElementById("createChannels");
+const liveChannelsDiv = document.getElementById("liveChannels");
+const deleteChannelBtn = document.getElementById("deleteChannelBtn");
+const userPanel = document.getElementById("userPanel");
+const userImage = document.getElementById("userImage");
+const inputArea = document.getElementById("inputArea");
+
+
+const isNoDbMode = localStorage.getItem("vaultNoDB") === "true";
+
+/* Example usage */
+if (isNoDbMode) {
+    console.log("Vault running in NO-DB MODE");
+
+    // disable UI things
+    // hide server creation
+    // use local memory only
+} else {
+    console.log("Vault running with DATABASE");
+}
+
+// 🔴 ADDED: block join server in No-DB
+function openJoinServer(){
+    if(localStorage.getItem("vaultNoDB") === "true"){
+        alert("Join Server disabled in No-DB mode");
+        return;
+    }
+    location.href = "joinserver.html";
+}
+
+// Profile image
+const savedProfileImage = localStorage.getItem("vaultProfileImage");
+if(savedProfileImage) userImage.src = savedProfileImage;
+
+// Account click
+userPanel.addEventListener("click",()=>window.location.href="account.html");
+
+// Set username
+socket.on("connect",()=>socket.emit("setUsername",username));
+
+/* ===== CHANNEL LIST ===== */
+socket.on("updateChannels", (channels) => {
+    const createdChannelsDiv = document.getElementById("createdChannels");
+    const liveChannelsDiv = document.getElementById("liveChannels");
+
+    // Clear previous channels
+    createdChannelsDiv.innerHTML = "";
+    liveChannelsDiv.innerHTML = "";
+
+    for (let ch in channels) {
+        const channelDiv = document.createElement("div");
+        channelDiv.className = "item small";
+        channelDiv.innerText = ch;
+        channelDiv.onclick = () => joinChannel(ch);
+
+        // Add to Live Channels
+        liveChannelsDiv.appendChild(channelDiv);
+
+        // Add to Created Channels if current user is the creator
+        if (channels[ch].creatorId && channels[ch].creatorId === username) {
+            const createdDiv = document.createElement("div");
+            createdDiv.className = "item small";
+            createdDiv.innerText = ch;
+            createdDiv.onclick = () => joinChannel(ch);
+            createdChannelsDiv.appendChild(createdDiv);
+        }
+    }
+});
+
+
+
+/* JOIN CHANNEL */
+function joinChannel(ch){
+    const pass = prompt("Enter channel password:");
+    if(pass===null) return;
+    socket.emit("joinChannel",{name:ch,password:pass});
+}
+
+/* JOIN RESULT */
+socket.on("joinResult",data=>{
+    if(!data.success){ alert(data.msg); return; }
+    currentChannel = data.name;
+    currentChannelCreator = data.creatorId;
+    currentChannelType = data.type || "text"; 
+    document.getElementById("currentChannelDisplay").innerText = "Channel: "+currentChannel;
+    chat.innerHTML="";
+    typingElements={};
+
+    data.messages.forEach(m=>{
+        if(m.text) addMessage(m.sender+": "+m.text,m.sender===username?"right":"left");
+        else if(m.buffer){
+            const blob = new Blob([Uint8Array.from(m.buffer)],{type:m.type});
+            const starBtn = document.createElement("button");
+            starBtn.innerHTML="⭐"; starBtn.className="icon-btn";
+            starBtn.onclick=()=>{ const audio = new Audio(URL.createObjectURL(blob)); audio.play(); };
+            chat.appendChild(starBtn);
+        }
+    });
+
+    deleteChannelBtn.style.display=(currentChannelCreator===socket.id)?"inline-block":"none";
+    updateInputArea();
+});
+/* Update input area */
+function updateInputArea(){
+    inputArea.innerHTML = "";
+
+    if(currentChannelType === "text"){
+        // Container for input + plus button
+        const container = document.createElement("div");
+        container.style.display = "flex";
+        container.style.alignItems = "center";
+        container.style.width = "100%";
+        container.style.gap = "5px";
+
+        // Text input
+        const inputEl = document.createElement("input");
+        inputEl.id = "msg";
+        inputEl.placeholder = "Message Vault...";
+        inputEl.onkeydown = handleKey;
+        inputEl.style.flex = "1";
+        inputEl.style.fontSize = "14px";
+        inputEl.style.padding = "8px";
+        container.appendChild(inputEl);
+        input = inputEl;
+
+        // Plus button → ONLY redirect
+        const plusBtn = document.createElement("button");
+        plusBtn.innerText = "+";
+        plusBtn.className = "icon-btn";
+        plusBtn.title = "Open Preview";
+        plusBtn.style.minWidth = "30px";
+        plusBtn.style.height = "36px";
+        plusBtn.style.marginRight = "16px";
+        plusBtn.style.fontSize = "18px";
+
+        plusBtn.onclick = () => {
+            window.location.href = "preview.html";
+        };
+
+        container.appendChild(plusBtn);
+        inputArea.appendChild(container);
+    } else {
+        // Voice recording
+        const micBtn = document.createElement("button");
+        micBtn.className = "icon-btn"; 
+        micBtn.innerHTML = "🎤";
+
+        const canvas = document.createElement("canvas"); 
+        canvas.width = 200; 
+        canvas.height = 40; 
+        canvas.style.marginTop = "5px";
+
+        inputArea.appendChild(micBtn); 
+        inputArea.appendChild(canvas); 
+        input = null;
+
+        let mediaRecorder, audioChunks = [], audioContext, analyser, dataArray, source;
+        let recordingStartTime = 0;
+
+        micBtn.onclick = async () => {
+            if(micBtn.dataset.recording === "true"){
+                mediaRecorder.stop();
+                micBtn.dataset.recording = "false";
+                micBtn.innerHTML = "🎤";
+                if(audioContext) audioContext.close();
+            } else {
+                const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                recordingStartTime = Date.now();
+
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.onstop = async () => {
+                    const recordingEndTime = Date.now();
+                    const duration = (recordingEndTime - recordingStartTime)/1000;
+
+                    const blob = new Blob(audioChunks, {type:'audio/webm; codecs=opus'});
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const base64Data = reader.result.split(',')[1];
+                        socket.emit("voiceMessage",{
+                            channel: currentChannel,
+                            data: base64Data,
+                            type: blob.type,
+                            sender: username,
+                            duration: duration
+                        });
+                    };
+                    reader.readAsDataURL(blob);
+
+                    // DISPLAY IN CHAT
+                    const wrap = document.createElement("div");
+                    wrap.className = "message right";
+                    wrap.style.display = "flex";
+                    wrap.style.alignItems = "center";
+                    wrap.style.gap = "8px";
+
+                    const playBtn = document.createElement("button");
+                    playBtn.className = "icon-btn";
+                    playBtn.innerHTML = "▶️";
+                    wrap.appendChild(playBtn);
+
+                    const progressContainer = document.createElement("div");
+                    progressContainer.style.position = "relative";
+                    progressContainer.style.width = "150px";
+                    progressContainer.style.height = "6px";
+                    progressContainer.style.background = "#fff";
+                    progressContainer.style.borderRadius = "3px";
+
+                    const progressBar = document.createElement("div");
+                    progressBar.style.position = "absolute";
+                    progressBar.style.left = "0";
+                    progressBar.style.top = "0";
+                    progressBar.style.height = "100%";
+                    progressBar.style.width = "0%";
+                    progressBar.style.background = "#5865f2";
+                    progressBar.style.borderRadius = "3px";
+
+                    progressContainer.appendChild(progressBar);
+                    wrap.appendChild(progressContainer);
+
+                    const durationSpan = document.createElement("span");
+                    durationSpan.innerText = formatDuration(duration);
+                    durationSpan.style.fontSize = "12px";
+                    wrap.appendChild(durationSpan);
+
+                    chat.appendChild(wrap);
+                    chat.scrollTop = chat.scrollHeight;
+
+                    const audio = new Audio(URL.createObjectURL(blob));
+                    playBtn.onclick = () => {
+                        if(audio.paused) audio.play();
+                        else audio.pause();
+                    };
+                    audio.ontimeupdate = () => {
+                        const percent = (audio.currentTime/audio.duration)*100;
+                        progressBar.style.width = percent + "%";
+                    };
+                };
+
+                mediaRecorder.start();
+                micBtn.dataset.recording = "true";
+                micBtn.innerHTML = "⏹️";
+
+                audioContext = new AudioContext();
+                source = audioContext.createMediaStreamSource(stream);
+                analyser = audioContext.createAnalyser();
+                source.connect(analyser);
+                analyser.fftSize = 256;
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+                const ctx = canvas.getContext("2d");
+
+                function draw(){
+                    if(micBtn.dataset.recording !== "true") return;
+                    requestAnimationFrame(draw);
+                    analyser.getByteFrequencyData(dataArray);
+                    ctx.fillStyle = "#1e1f22"; ctx.fillRect(0,0,canvas.width,canvas.height);
+                    let barWidth = canvas.width/dataArray.length;
+                    for(let i=0;i<dataArray.length;i++){
+                        let barHeight = dataArray[i]/2;
+                        ctx.fillStyle = "#5865f2";
+                        ctx.fillRect(i*barWidth,canvas.height-barHeight,barWidth,barHeight);
+                    }
+                }
+                draw();
+            }
+        };
+    }
+}
+
+
+// Helper: convert seconds to mm:ss
+function formatDuration(seconds){
+    const m = Math.floor(seconds/60);
+    const s = Math.floor(seconds%60);
+    return `${m}:${s<10?"0"+s:s}`;
+}
+
+
+/* TYPING */
+inputArea.addEventListener("input",()=>{ if(!currentChannel||!input) return; if(input.value.length>0){ socket.emit("typing",{channel:currentChannel}); clearTimeout(typingTimeout); typingTimeout=setTimeout(()=>{socket.emit("stopTyping",{channel:currentChannel});},1200); } else socket.emit("stopTyping",{channel:currentChannel}); });
+socket.on("typing",data=>{ if(data.user===username) return; if(typingElements[data.user]) return; const t=document.createElement("div"); t.className="message left"; t.style.opacity="0.6"; t.id="typing-"+data.user; t.innerText=data.user+" is typing..."; chat.appendChild(t); typingElements[data.user]=t; chat.scrollTop=chat.scrollHeight; });
+socket.on("stopTyping",data=>{ const el=typingElements[data.user]; if(el){ el.remove(); delete typingElements[data.user]; } });
+
+/* SEND TEXT */
+function handleKey(e){ if(e.key==="Enter") send(); }
+function send(){ if(!currentChannel||currentChannelType!=="text") return; const t=input.value.trim(); if(!t) return; socket.emit("stopTyping",{channel:currentChannel}); socket.emit("channelMessage",{channel:currentChannel,text:t}); input.value=""; }
+
+/* RECEIVE TEXT */
+socket.on("channelMessage",d=>{ if(d.channel!==currentChannel) return; const typingEl=typingElements[d.msg.sender]; if(typingEl){ typingEl.remove(); delete typingElements[d.msg.sender]; } addMessage(d.msg.sender+": "+d.msg.text,d.msg.sender===username?"right":"left"); });
+
+/* RECEIVE VOICE */
+socket.on("voiceMessage", data => {
+    if (data.channel !== currentChannel) return;
+
+    // ✅ IGNORE IF THIS CLIENT IS THE SENDER
+    if (data.sender === username) return;
+
+    const binary = atob(data.data);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+
+    const blob = new Blob([bytes], { type: data.type });
+    const url = URL.createObjectURL(blob);
+
+    const wrap = document.createElement("div");
+    wrap.className = "message left";
+    wrap.style.display = "flex";
+    wrap.style.alignItems = "center";
+    wrap.style.gap = "8px";
+
+    // Play button
+    const playBtn = document.createElement("button");
+    playBtn.className = "icon-btn";
+    playBtn.innerHTML = "▶️";
+    wrap.appendChild(playBtn);
+
+    // Progress bar
+    const progressContainer = document.createElement("div");
+    progressContainer.style.position = "relative";
+    progressContainer.style.width = "150px";
+    progressContainer.style.height = "6px";
+    progressContainer.style.background = "#fff";
+    progressContainer.style.borderRadius = "3px";
+
+    const progressBar = document.createElement("div");
+    progressBar.style.position = "absolute";
+    progressBar.style.left = "0";
+    progressBar.style.top = "0";
+    progressBar.style.height = "100%";
+    progressBar.style.width = "0%";
+    progressBar.style.background = "#5865f2";
+    progressBar.style.borderRadius = "3px";
+
+    progressContainer.appendChild(progressBar);
+    wrap.appendChild(progressContainer);
+
+    // Duration placeholder
+    const durationSpan = document.createElement("span");
+    durationSpan.innerText = data.duration ? formatDuration(data.duration) : "0:00";
+    durationSpan.style.fontSize = "12px";
+    wrap.appendChild(durationSpan);
+
+    chat.appendChild(wrap);
+    chat.scrollTop = chat.scrollHeight;
+
+    // Audio logic
+    const audio = new Audio(url);
+    playBtn.onclick = () => {
+        if (audio.paused) audio.play();
+        else audio.pause();
+    };
+
+    audio.ontimeupdate = () => {
+        const percent = (audio.currentTime / audio.duration) * 100;
+        progressBar.style.width = percent + "%";
+    };
+});
+
+// Helper to format duration in mm:ss
+function formatDuration(sec) {
+    const minutes = Math.floor(sec / 60);
+    const seconds = Math.floor(sec % 60);
+    return `${minutes}:${seconds.toString().padStart(2,"0")}`;
+}
+
+
+
+function addMessage(t,side){ const d=document.createElement("div"); d.className="message "+side; d.innerText=t; chat.appendChild(d); chat.scrollTop=chat.scrollHeight; }
+
+/* DELETE CHANNEL */
+deleteChannelBtn.onclick=()=>{ if(!currentChannel) return; if(!confirm("Delete channel?")) return; socket.emit("deleteChannel",currentChannel); currentChannel=null; chat.innerHTML=""; document.getElementById("currentChannelDisplay").innerText="No channel joined"; deleteChannelBtn.style.display="none"; currentChannelType="text"; updateInputArea(); };
+
+/* LOGOUT */
+document.getElementById("logoutBtn").onclick=()=>{ localStorage.removeItem("vaultUsername"); location.href="signin.html"; };
+</script>
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Create Channel</title>
+<style>
+body{
+    margin:0;
+    background:#1e1f22;
+    color:#fff;
+    font-family:Arial,sans-serif;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+}
+.container{
+    background:#313338;
+    padding:20px;
+    border-radius:8px;
+    width:300px;
+    display:flex;
+    flex-direction:column;
+}
+input, select{
+    margin:8px 0;
+    padding:8px;
+    border-radius:5px;
+    border:none;
+    outline:none;
+    background:#1e1f22;
+    color:#fff;
+}
+button{
+    padding:8px;
+    margin-top:10px;
+    background:#5865f2;
+    color:#fff;
+    border:none;
+    border-radius:5px;
+    cursor:pointer;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h3>Create Channel</h3>
+
+    <input type="text" id="chName" placeholder="Channel Name">
+    <input type="password" id="chPass" placeholder="Password">
+
+    <select id="chType">
+        <option value="">Select Channel Type</option>
+        <option value="text">Text Channel</option>
+        <option value="voice">Voice Channel</option>
+        <option value="video">Video Channel</option>
+    </select>
+
+    <button onclick="createChannel()">Create</button>
+</div>
+
+<script>
+function createChannel() {
+    const name = document.getElementById("chName").value.trim();
+    const password = document.getElementById("chPass").value.trim();
+    const type = document.getElementById("chType").value;
+
+    if (!name || !type) {
+        alert("Fill channel name & type");
+        return;
+    }
+
+    const creator = localStorage.getItem("vaultUsername") || "Guest";
+
+    fetch("/api/createChannel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            serverName: "Default",
+            name,
+            password,
+            type,
+            creator
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert("Channel created!");
+            window.location.href = "index.html";
+        } else {
+            alert(data.message || "Failed");
+        }
+    });
+}
+</script>
+
+</body>
+</html>
