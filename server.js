@@ -83,11 +83,15 @@ function loadMessages() {
 }
 
 /* 🔴 INITIAL LOAD */
-if (!NO_DB) {
+/* 🔴 INITIAL LOAD */
+// ✅ FIX: only load DB if env explicitly says false
+if (process.env.NO_DB === "false") {
+    NO_DB = false;
     loadServers();
     loadChannels();
     loadMessages();
 }
+
 
 /* ================= HTTP ROUTES ================= */
 
